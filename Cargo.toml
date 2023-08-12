@@ -2,7 +2,7 @@
 name = "efi-loadopt"
 version = "0.1.0"
 authors = ["MOZGIII <mike-n@narod.ru>"]
-edition = "2018"
+edition = "2021"
 
 description = "UEFI load option (EFI_LOAD_OPTION) decoding"
 documentation = "https://docs.rs/efi-loadopt"
