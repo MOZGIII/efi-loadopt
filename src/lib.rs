@@ -1,5 +1,4 @@
 use byteorder::{NativeEndian, ReadBytesExt};
-use failure::Error;
 use std::io::Cursor;
 
 // UEFI Spec 2.8, 3.1.3.
@@ -11,24 +10,43 @@ pub struct EFILoadOpt {
     pub optional_data: Vec<u8>,
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum DecodeError {
+    #[error("attributes: {0}")]
+    Attributes(std::io::Error),
+    #[error("file path list length: {0}")]
+    FilePathListLength(std::io::Error),
+    #[error("description reading: {0}")]
+    DescriptionReading(std::io::Error),
+    #[error("description parsing: {0}")]
+    DescriptionParsing(std::string::FromUtf16Error),
+}
+
 impl EFILoadOpt {
-    pub fn decode(buf: &[u8]) -> Result<Self, Error> {
+    pub fn decode(buf: &[u8]) -> Result<Self, DecodeError> {
         let mut cursor = Cursor::new(buf);
-        let attributes = cursor.read_u32::<NativeEndian>()?;
-        let file_path_list_length = cursor.read_u16::<NativeEndian>()?;
+        let attributes = cursor
+            .read_u32::<NativeEndian>()
+            .map_err(DecodeError::Attributes)?;
+        let file_path_list_length = cursor
+            .read_u16::<NativeEndian>()
+            .map_err(DecodeError::FilePathListLength)?;
         let description_start = cursor.position() as usize;
 
         let vec_capacity = (buf.len() - description_start + 1) >> 1;
         let mut description_buf: Vec<u16> = Vec::with_capacity(vec_capacity);
         loop {
-            let c = cursor.read_u16::<NativeEndian>()?;
+            let c = cursor
+                .read_u16::<NativeEndian>()
+                .map_err(DecodeError::DescriptionReading)?;
             if c == 0 {
                 break;
             }
             description_buf.push(c);
         }
 
-        let description = String::from_utf16(&description_buf)?;
+        let description =
+            String::from_utf16(&description_buf).map_err(DecodeError::DescriptionParsing)?;
 
         let optional_data_start = cursor.position() as usize + file_path_list_length as usize;
         let optional_data: Vec<u8> = Vec::from(&buf[optional_data_start..]);
