@@ -11,5 +11,5 @@ keywords = ["uefi", "efi"]
 license = "MIT"
 
 [dependencies]
-byteorder = "1.3"
+byteorder = "1.4"
 thiserror = "1"
